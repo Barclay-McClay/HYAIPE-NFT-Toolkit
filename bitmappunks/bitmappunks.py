@@ -19,8 +19,10 @@ COLOURS = {
 
 #Create an instance of tkinter frame
 window = Tk()
-window.title("Bitmap Punk QuickView")
+window.title("Bitmap Punker")
+window.iconbitmap("grid_pixel_icon_123662.ico")
 window.config(background=COLOURS['darkTone'])
+
 
 # FUNCTIONS
 def create_directory(path):
@@ -41,21 +43,22 @@ def openBrowser():
         webbrowser.open_new_tab(viewURL+column_value)
 
 def screenshotBrowser():
-    lbStatus.configure(text="Screenshotting... Please Wait",fg=COLOURS['highlights'])
+    lbStatus.configure(text="Screenshotting... Please Wait ⏳",fg=COLOURS['highlights'])
+    window.update()
     selected_item = tree.selection()
     if selected_item:
         linkValue = f"{viewURL}{tree.set(selected_item, 2)}"
         driver.get(linkValue)
         time.sleep(6)
-        create_directory("./screenshots")
-        filepath = f"screenshots/{tree.set(selected_item, 2)}.png"
+        create_directory("screenshots")
+        filepath = f"screenshots/bitmapPunk_{tree.set(selected_item, 2)}.png"
         driver.save_screenshot(filepath)
         # Open the PNG image
         with Image.open(filepath) as image:
-            crop_coords = (170, 100, 520, 420)
+            crop_coords = (160, 90, 560, 440)
             cropped_image = image.crop(crop_coords)
             cropped_image.save(filepath)
-    lbStatus.configure(text=f"Saved to: {filepath}",fg=COLOURS['highlights'])
+        lbStatus.configure(text=f"Saved to: {filepath}",fg=COLOURS['highlights'])
 
 def sort_treeview(column):
     # Clear existing items in the Treeview
@@ -89,6 +92,15 @@ def on_header_click(event, column):
     SORT_ORDER[column] = new_order
     # Sort the Treeview based on the clicked column and order
     sort_treeview(column)
+
+def autoPilot():
+    lbStatus.configure(text="Screenshotting... Please Wait",fg=COLOURS['highlights'])
+    for item_id in tree.get_children():
+        item_data = tree.item(item_id)
+        blockID = item_data["values"][2]
+        tree.selection_set(item_id)
+        if not os.path.exists(f"screenshots/bitmapPunk_{blockID}.png"):        
+            screenshotBrowser()
 
 
 #############################################################################################################################################
@@ -169,10 +181,13 @@ for i, column in enumerate(tree["columns"]):
 # Create Action buttons
 bWebView = Button(FrButtons,text="Web View 🌐",command=openBrowser,bg=COLOURS["midTone"],fg=COLOURS["highlights"],relief=GROOVE)
 bScreenshot = Button(FrButtons,text="Screenshot 📷",command=screenshotBrowser,bg=COLOURS["midTone"],fg=COLOURS["highlights"],relief=GROOVE)
+bAuto = Button(FrButtons,text="Auto-pilot 🤖",command=autoPilot,bg=COLOURS["midTone"],fg=COLOURS["highlights"],relief=GROOVE)
 lbStatus = Label(FrButtons,text="Ready",fg=COLOURS["lightTone"],bg=COLOURS["darkTone"])
+
 lbStatus.pack(side=RIGHT)
 bWebView.pack(side=LEFT)
 bScreenshot.pack(side=LEFT)
+bAuto.pack(side=LEFT)
 
 
 # Add Treeview to a Scrollbar
