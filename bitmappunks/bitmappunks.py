@@ -1,31 +1,61 @@
 import csv
 from tkinter import *
 from tkinter import filedialog , ttk
-import webbrowser
+import webbrowser, time, os, atexit
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from PIL import Image
+
 
 SORT_ORDER = {}
 viewURL = "https://bitfeed.live/block/height/"
 
+COLOURS = {
+    "darkTone": "#11140F",
+    "midTone": "#313338",
+    "lightTone": "#383A40",
+    "highlights": "#CECECE"
+}
+
 #Create an instance of tkinter frame
 window = Tk()
 window.title("Bitmap Punk QuickView")
+window.config(background=COLOURS['darkTone'])
 
-# Function to open the file dialog
+# FUNCTIONS
+def create_directory(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+        print("Directory created successfully.")
+    else:
+        print("Directory already exists.")
+
 def open_file_dialog():
     # Open the file dialog
     return filedialog.askopenfilename()
 
-def openBrowser(event):
-    print("hello")
+def openBrowser():
     selected_item = tree.selection()
-    print(selected_item)
     if selected_item:
-        print("hello again")
         column_value = tree.set(selected_item, 2)
         webbrowser.open_new_tab(viewURL+column_value)
 
-def remove_non_digits(string):
-    return ''.join(char for char in string if char.isdigit())
+def screenshotBrowser():
+    lbStatus.configure(text="Screenshotting... Please Wait",fg=COLOURS['highlights'])
+    selected_item = tree.selection()
+    if selected_item:
+        linkValue = f"{viewURL}{tree.set(selected_item, 2)}"
+        driver.get(linkValue)
+        time.sleep(6)
+        create_directory("./screenshots")
+        filepath = f"screenshots/{tree.set(selected_item, 2)}.png"
+        driver.save_screenshot(filepath)
+        # Open the PNG image
+        with Image.open(filepath) as image:
+            crop_coords = (170, 100, 520, 420)
+            cropped_image = image.crop(crop_coords)
+            cropped_image.save(filepath)
+    lbStatus.configure(text=f"Saved to: {filepath}",fg=COLOURS['highlights'])
 
 def sort_treeview(column):
     # Clear existing items in the Treeview
@@ -62,58 +92,64 @@ def on_header_click(event, column):
 
 
 #############################################################################################################################################
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Run Chrome in headless mode (optional)
+chrome_options.add_argument("webdriver.chrome.driver=chromedriver.exe")  # Specify the path to the WebDriver
+driver = webdriver.Chrome(options=chrome_options)
 
 with open(open_file_dialog(), 'r', encoding='utf-8') as file:
-    data = csv.reader(file)
-    OUTPUT=list(data)
+    data = list(csv.reader(file))
     for row in data:
-        timestamp, bitmapInscriptionID, bitmapBlockNumber, date, sizeByValue, sizeByBytes, transactions, subKrange, negativePunk, historicalPunk, perfectPunk = row[:11]
-        bitmapBlockNumber = remove_non_digits(bitmapBlockNumber)
-frLeft = Frame(window)
-frLeft.pack()
+        row[2] = ''.join(char for char in row[2] if char.isdigit()) # Sanitize IDs
+OUTPUT=data
 
+FrTree = Frame(window,background=COLOURS['darkTone'])
+FrButtons = Frame(window,background=COLOURS['darkTone'])
+
+# Create a new style for the Treeview
+TreeStyle = ttk.Style()
+TreeStyle.configure("Custom.Treeview",
+                background=COLOURS["midTone"],
+                foreground=COLOURS["highlights"],  
+                font=("Consolas", 10) 
+                )
+headerStyle = ttk.Style()
+headerStyle.configure("Custom.Treeview.Heading",
+                background=COLOURS["darkTone"],  # Set the background color
+                font=("Consolas", 10, "bold")   # Set the font
+                )
 # Create a Treeview widget to display the data
-tree = ttk.Treeview(window)
+tree = ttk.Treeview(FrTree, style="Custom.Treeview")
 tree["columns"] = (
-    "timestamp",
-    "inscription_id",
-    "block_number",
-    "date",
-    "size_value",
-    "size_bytes",
-    "transactions",
-    "sub_k_range",
-    "negative_punk",
-    "historical_punk",
-    "perfect_punk"
+    "Submitted",
+    "Inscription ID",
+    "Block Number",
+    "Date",
+    "Value",
+    "Bytes",
+    "Transactions",
+    "Sub K Range",
+    "Negative Punk",
+    "Historical Punk",
+    "Perfect Punk"
 )
-# Define column headings
-tree.heading("#0", text="Index")
-tree.heading("timestamp", text="Timestamp")
-tree.heading("inscription_id", text="Bitmap Inscription ID")
-tree.heading("block_number", text="Bitmap Block Number")
-tree.heading("date", text="Date")
-tree.heading("size_value", text="Size By Value")
-tree.heading("size_bytes", text="Size By Bytes")
-tree.heading("transactions", text="Transactions")
-tree.heading("sub_k_range", text="Sub K and Range")
-tree.heading("negative_punk", text="Negative Punk")
-tree.heading("historical_punk", text="Historical Punk")
-tree.heading("perfect_punk", text="Perfect Punk")
+
+for column in tree["columns"]:
+    tree.heading(column, text=column, anchor=CENTER)#, style="Custom.Treeview.Heading")
 
 # Define column widths
-tree.column("#0", width=50, minwidth=50, anchor=CENTER)
-tree.column("timestamp", width=150, minwidth=100, anchor=CENTER)
-tree.column("inscription_id", width=150, minwidth=100, anchor=CENTER)
-tree.column("block_number", width=150, minwidth=100, anchor=CENTER)
-tree.column("date", width=100, minwidth=80, anchor=CENTER)
-tree.column("size_value", width=100, minwidth=80, anchor=CENTER)
-tree.column("size_bytes", width=100, minwidth=80, anchor=CENTER)
-tree.column("transactions", width=100, minwidth=80, anchor=CENTER)
-tree.column("sub_k_range", width=150, minwidth=100, anchor=CENTER)
-tree.column("negative_punk", width=100, minwidth=80, anchor=CENTER)
-tree.column("historical_punk", width=100, minwidth=80, anchor=CENTER)
-tree.column("perfect_punk", width=100, minwidth=80, anchor=CENTER)
+tree.column("#0", width=1, minwidth=1, anchor=CENTER)
+tree.column("Submitted", width=150, minwidth=100, anchor=CENTER)
+tree.column("Inscription ID", width=150, minwidth=100, anchor=CENTER)
+tree.column("Block Number", width=150, minwidth=100, anchor=CENTER)
+tree.column("Date", width=100, minwidth=80, anchor=CENTER)
+tree.column("Value", width=100, minwidth=80, anchor=CENTER)
+tree.column("Bytes", width=100, minwidth=80, anchor=CENTER)
+tree.column("Transactions", width=100, minwidth=80, anchor=CENTER)
+tree.column("Sub K Range", width=150, minwidth=100, anchor=CENTER)
+tree.column("Negative Punk", width=100, minwidth=80, anchor=CENTER)
+tree.column("Historical Punk", width=100, minwidth=80, anchor=CENTER)
+tree.column("Perfect Punk", width=100, minwidth=80, anchor=CENTER)
 
 # Insert data into the Treeview
 for i, item in enumerate(OUTPUT):
@@ -129,14 +165,26 @@ for i, column in enumerate(tree["columns"]):
     tree.heading(column, text=column)
     tree.heading(column, command=lambda col=column: on_header_click(event=None, column=col))
 
-tree.bind("<<TreeviewSelect>>", openBrowser)
+
+# Create Action buttons
+bWebView = Button(FrButtons,text="Web View 🌐",command=openBrowser,bg=COLOURS["midTone"],fg=COLOURS["highlights"],relief=GROOVE)
+bScreenshot = Button(FrButtons,text="Screenshot 📷",command=screenshotBrowser,bg=COLOURS["midTone"],fg=COLOURS["highlights"],relief=GROOVE)
+lbStatus = Label(FrButtons,text="Ready",fg=COLOURS["lightTone"],bg=COLOURS["darkTone"])
+lbStatus.pack(side=RIGHT)
+bWebView.pack(side=LEFT)
+bScreenshot.pack(side=LEFT)
+
 
 # Add Treeview to a Scrollbar
-scrollbar = Scrollbar(window, orient="vertical", command=tree.yview)
+scrollbar = Scrollbar(FrTree, orient="vertical", command=tree.yview)
 tree.configure(yscroll=scrollbar.set)
 # Pack the Treeview and Scrollbar
 tree.pack(side=LEFT, fill=BOTH, expand=True)
 scrollbar.pack(side=RIGHT, fill=Y)
 
+FrButtons.pack(side=TOP,fill=X,expand=True)
+FrTree.pack(side=BOTTOM,fill=BOTH,expand=True)
 
+
+atexit.register(lambda: driver.quit())
 window.mainloop()
