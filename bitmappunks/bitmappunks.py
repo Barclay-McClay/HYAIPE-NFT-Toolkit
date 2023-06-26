@@ -20,7 +20,6 @@ COLOURS = {
 #Create an instance of tkinter frame
 window = Tk()
 window.title("Bitmap Punker")
-window.iconbitmap("grid_pixel_icon_123662.ico")
 window.config(background=COLOURS['darkTone'])
 
 
